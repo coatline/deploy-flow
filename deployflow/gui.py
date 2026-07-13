@@ -249,14 +249,33 @@ class DeployFlowApp:
     PLATFORM_DEPOT_LABELS = {"web": "Web Depot ID", "win": "Windows Depot ID", "linux": "Linux Depot ID", "mac": "Mac Depot ID", "android": "Android Depot ID"}
 
     def _build_config_tab(self, parent: tk.Frame) -> None:
-        inner = tk.Frame(parent, bg=self.BG)
-        inner.pack(fill="both", expand=True, padx=4, pady=4)
+        # Scrollable canvas wrapper
+        canvas = tk.Canvas(parent, bg=self.BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scrollable = tk.Frame(canvas, bg=self.BG)
+        scrollable.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True, padx=(4, 0), pady=4)
+        scrollbar.pack(side="right", fill="y", pady=4)
+        def _on_mousewheel(event: tk.Event) -> None:
+            canvas.yview_scroll(-1 * (event.delta // 120), "units")
+        canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _on_mousewheel))
+        canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
 
         self.entries: dict[str, tk.Entry | ttk.Combobox | tk.Text] = {}
         pad = {"padx": 10, "pady": (2, 0)}
 
+        # ── Name ──────────────────────────────────────────────────
+        ttk.Label(scrollable, text="Name", font=("Segoe UI", 8)).pack(anchor="w", **pad)
+        name_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        name_w.pack(fill="x", ipady=1, **pad)
+        name_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("name"))
+        ToolTip(name_w, "Display name for this project.\nLeave blank to use folder name.")
+        self.entries["name"] = name_w
+
         # ── Engine + Platform side by side ─────────────────────────
-        ep_row = tk.Frame(inner, bg=self.BG)
+        ep_row = tk.Frame(scrollable, bg=self.BG)
         ep_row.pack(fill="x", **pad)
         # Engine column
         eng_col = tk.Frame(ep_row, bg=self.BG)
@@ -276,19 +295,20 @@ class DeployFlowApp:
         self.entries["platform"] = plat_w
 
         # ── Project Path ──────────────────────────────────────────
-        ttk.Label(inner, text="Project Path", font=("Segoe UI", 8)).pack(anchor="w", **pad)
-        proj_row = tk.Frame(inner, bg=self.BG)
+        ttk.Label(scrollable, text="Project Path", font=("Segoe UI", 8)).pack(anchor="w", **pad)
+        proj_row = tk.Frame(scrollable, bg=self.BG)
         proj_row.pack(fill="x", **pad)
         proj_w = tk.Entry(proj_row, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         proj_w.pack(side="left", fill="x", expand=True, ipady=1)
         tk.Button(proj_row, text="Browse", bg=self.ACCENT, fg=self.FG, relief="flat", cursor="hand2", font=("Segoe UI", 8),
                   command=self._browse_project).pack(side="right", padx=(4, 0), ipadx=4, ipady=1)
         proj_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("project_path"))
+        ToolTip(proj_w, "The root folder of your game project.\nThe one containing project.godot (Godot) or the .sln file (Unity).")
         self.entries["project_path"] = proj_w
 
         # ── Build Output Path ─────────────────────────────────────
-        ttk.Label(inner, text="Build Output Path", font=("Segoe UI", 8)).pack(anchor="w", **pad)
-        bld_row = tk.Frame(inner, bg=self.BG)
+        ttk.Label(scrollable, text="Build Output Path", font=("Segoe UI", 8)).pack(anchor="w", **pad)
+        bld_row = tk.Frame(scrollable, bg=self.BG)
         bld_row.pack(fill="x", **pad)
         bld_w = tk.Entry(bld_row, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         bld_w.pack(side="left", fill="x", expand=True, ipady=1)
@@ -298,64 +318,64 @@ class DeployFlowApp:
         self.entries["build_path"] = bld_w
 
         # ── Separator ─────────────────────────────────────────────
-        tk.Frame(inner, height=1, bg="#3a3a5a").pack(fill="x", padx=10, pady=(8, 4))
+        tk.Frame(scrollable, height=1, bg="#3a3a5a").pack(fill="x", padx=10, pady=(8, 4))
 
         # ── Itch.io Section ───────────────────────────────────────
-        ttk.Label(inner, text="itch.io", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=10, pady=(0, 2))
-        ttk.Label(inner, text="Target (user/game)", font=("Segoe UI", 8)).pack(anchor="w", **pad)
-        itch_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        ttk.Label(scrollable, text="itch.io", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=10, pady=(0, 2))
+        ttk.Label(scrollable, text="Target (user/game)", font=("Segoe UI", 8)).pack(anchor="w", **pad)
+        itch_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         itch_w.pack(fill="x", ipady=1, **pad)
         itch_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("itch_target"))
         ToolTip(itch_w, "Format: user/game\nChannel is auto-filled from the selected platform.\nExample: myuser/mygame")
         self.entries["itch_target"] = itch_w
 
-        ttk.Label(inner, text="itch.io Page URL (opens after deploy)", font=("Segoe UI", 8)).pack(anchor="w", **pad)
-        itch_url_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        ttk.Label(scrollable, text="itch.io Page URL (opens after deploy)", font=("Segoe UI", 8)).pack(anchor="w", **pad)
+        itch_url_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         itch_url_w.pack(fill="x", ipady=1, **pad)
         itch_url_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("itch_url"))
         self.entries["itch_url"] = itch_url_w
 
         # ── Separator ─────────────────────────────────────────────
-        tk.Frame(inner, height=1, bg="#3a3a5a").pack(fill="x", padx=10, pady=(8, 4))
+        tk.Frame(scrollable, height=1, bg="#3a3a5a").pack(fill="x", padx=10, pady=(8, 4))
 
         # ── Steam Section ─────────────────────────────────────────
-        self.steam_header = ttk.Label(inner, text="Steam", font=("Segoe UI", 9, "bold"))
+        self.steam_header = ttk.Label(scrollable, text="Steam", font=("Segoe UI", 9, "bold"))
         self.steam_header.pack(anchor="w", padx=10, pady=(0, 2))
 
         # Steam App ID (label toggles between App ID / Demo App ID)
-        self.steam_app_id_label = ttk.Label(inner, text="Steam App ID", font=("Segoe UI", 8))
+        self.steam_app_id_label = ttk.Label(scrollable, text="Steam App ID", font=("Segoe UI", 8))
         self.steam_app_id_label.pack(anchor="w", **pad)
-        self.steam_app_id_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        self.steam_app_id_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         self.steam_app_id_w.pack(fill="x", ipady=1, **pad)
         self.steam_app_id_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("steam_app_id"))
         self.entries["steam_app_id"] = self.steam_app_id_w
 
         # Steam Demo App ID (hidden by default)
-        self.steam_demo_label = ttk.Label(inner, text="Steam Demo App ID", font=("Segoe UI", 8))
-        self.steam_demo_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        self.steam_demo_label = ttk.Label(scrollable, text="Steam Demo App ID", font=("Segoe UI", 8))
+        self.steam_demo_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         self.entries["steam_demo_app_id"] = self.steam_demo_w
 
         # Per-platform Steam depot fields
         self.depot_entries: dict[str, tk.Entry] = {}
         self.depot_labels: dict[str, ttk.Label] = {}
         for plat_key, label in self.PLATFORM_DEPOT_LABELS.items():
-            lbl = ttk.Label(inner, text=label, font=("Segoe UI", 8))
+            lbl = ttk.Label(scrollable, text=label, font=("Segoe UI", 8))
             lbl.pack(anchor="w", **pad)
             self.depot_labels[plat_key] = lbl
-            dep_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+            dep_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
             dep_w.pack(fill="x", ipady=1, **pad)
             dep_w.bind("<KeyRelease>", lambda _e, k=plat_key: self._save_depot_field(k))
             self.depot_entries[plat_key] = dep_w
 
-        self.steam_url_label = ttk.Label(inner, text="Steam Store URL (opens after deploy)", font=("Segoe UI", 8))
+        self.steam_url_label = ttk.Label(scrollable, text="Steam Store URL (opens after deploy)", font=("Segoe UI", 8))
         self.steam_url_label.pack(anchor="w", **pad)
-        self.steam_url_w = tk.Entry(inner, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
+        self.steam_url_w = tk.Entry(scrollable, bg=self.ENTRY_BG, fg=self.FG, insertbackground=self.FG, font=("Consolas", 9), relief="flat", bd=4)
         self.steam_url_w.pack(fill="x", ipady=1, **pad)
         self.steam_url_w.bind("<KeyRelease>", lambda _e: self._auto_save_field("steam_url"))
         self.entries["steam_url"] = self.steam_url_w
 
         # ── Preset (hidden for Unity) ─────────────────────────────
-        self._preset_frame = tk.Frame(inner, bg=self.BG)
+        self._preset_frame = tk.Frame(scrollable, bg=self.BG)
         self._preset_frame.pack(fill="x")
         tk.Frame(self._preset_frame, height=1, bg="#3a3a5a").pack(fill="x", padx=10, pady=(8, 4))
         preset_label_frame = tk.Frame(self._preset_frame, bg=self.BG)
@@ -384,10 +404,10 @@ class DeployFlowApp:
         self.root.after(50, _on_engine_change)
 
         # ── Version + action buttons ──────────────────────────────
-        self.version_label = tk.Label(inner, text="", bg=self.BG, fg=self.LABEL_FG, font=("Segoe UI", 10, "bold"))
+        self.version_label = tk.Label(scrollable, text="", bg=self.BG, fg=self.LABEL_FG, font=("Segoe UI", 10, "bold"))
         self.version_label.pack(side="bottom", pady=(0, 4))
 
-        btn_frame = tk.Frame(inner, bg=self.BG)
+        btn_frame = tk.Frame(scrollable, bg=self.BG)
         btn_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
 
         self.btn_build = tk.Button(btn_frame, text="Build", bg="#4a4a4a", fg="#ffffff",
@@ -425,7 +445,7 @@ class DeployFlowApp:
         ToolTip(self.demo_cb, "When checked:\n- Zip filenames get '(demo)' suffix\n- Steam Demo App ID field is used instead of App ID")
 
     def _on_platform_change(self) -> None:
-        self._auto_save_field("engine")
+        self._auto_save_field("platform")
         plat = self.entries.get("platform", None)
         plat_val = plat.get() if plat else ""
 
@@ -520,50 +540,6 @@ class DeployFlowApp:
         cfg["steam_depots"] = depots
         update_project(self.project_id, cfg)
         self.config = get_project(self.project_id)
-
-        # Version + action buttons at the bottom of config panel
-        self.version_label = tk.Label(
-            inner, text="", bg=self.BG, fg=self.LABEL_FG,
-            font=("Segoe UI", 10, "bold"),
-        )
-        self.version_label.pack(side="bottom", pady=(0, 4))
-
-        btn_frame = tk.Frame(inner, bg=self.BG)
-        btn_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
-
-        self.btn_build = tk.Button(
-            btn_frame, text="Build",
-            bg="#4a4a4a", fg="#ffffff",
-            activebackground="#666666", font=("Segoe UI", 8, "bold"),
-            relief="flat", cursor="hand2", command=self._build_only,
-        )
-        self.btn_build.pack(side="left", padx=(0, 2), ipadx=8, ipady=2)
-
-        self.btn_run = tk.Button(
-            btn_frame, text="Run",
-            bg="#2d6a4f", fg="#ffffff",
-            activebackground="#40916c", font=("Segoe UI", 8, "bold"),
-            relief="flat", cursor="hand2", command=self._run_build_output,
-        )
-        self.btn_run.pack(side="left", padx=(2, 0), ipadx=8, ipady=2)
-
-        self.btn_itch = tk.Button(
-            btn_frame, text="Itch.io",
-            bg=self.BTN_BG_ITCH, fg="#ffffff",
-            activebackground=self.BTN_ACTIVE_ITCH, activeforeground="#ffffff",
-            font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2",
-            command=lambda: self._deploy("itch"),
-        )
-        self.btn_itch.pack(side="left", padx=(2, 0), ipadx=6, ipady=2)
-
-        self.btn_steam = tk.Button(
-            btn_frame, text="Steam",
-            bg=self.BTN_BG_STEAM, fg="#ffffff",
-            activebackground=self.BTN_ACTIVE_STEAM, activeforeground="#ffffff",
-            font=("Segoe UI", 8, "bold"), relief="flat", cursor="hand2",
-            command=lambda: self._deploy("steam"),
-        )
-        self.btn_steam.pack(side="left", padx=(2, 0), ipadx=6, ipady=2)
 
     # ── Log panel (right side) ────────────────────────────────────────
 
@@ -792,7 +768,7 @@ Access via the Settings button in the sidebar. This is where you set:
 Tips
   • If Godot or Unity is on your system PATH, you can leave the executable fields blank.
   • You can have multiple projects open — use the sidebar to switch between them.
-  • Each project's config is saved as deployflow.json inside the project folder.
+  • Project configs are saved automatically to your AppData folder.
   • Credentials (API keys, tokens) are stored securely in your OS keyring."""
 
         text.insert("1.0", help_text)
@@ -915,9 +891,6 @@ Tips
             if val:
                 depots[plat_key] = val
         cfg["steam_depots"] = depots
-        # Collect the correct steam app id
-        if cfg.get("demo_build", False):
-            cfg["steam_app_id"] = self.steam_demo_w.get().strip()
         return cfg
 
     def _save_config(self, silent: bool = False) -> None:
@@ -1120,12 +1093,11 @@ Tips
             if detected:
                 self.config["engine"] = detected
                 update_project(pid, {"engine": detected})
+        self._shutdown_web_server()
         add_recent(pid)
         self._show_main()
         self._refresh_sidebar()
         self._set_status(f"Loaded: {self.config.get('name', pid)}")
-        self._load_fields()
-        self._update_version_display()
 
     # ── Build & Deploy ────────────────────────────────────────────────
 
@@ -1548,7 +1520,8 @@ Tips
                 steam_script = settings.get("steam_script_path", "")
                 script_p = Path(steam_script) if steam_script else None
                 depot_override = cfg.get("steam_depots", {}).get(cfg.get("platform", ""), "")
-                push_steam(cfg["steam_app_id"], output, script_p, depot_id=depot_override or None, log=lambda msg: self.root.after(0, self._log, msg))
+                app_id = cfg.get("steam_demo_app_id" if cfg.get("demo_build") else "steam_app_id", "")
+                push_steam(app_id, output, script_p, depot_id=depot_override or None, log=lambda msg: self.root.after(0, self._log, msg))
 
             self.root.after(0, lambda: self._set_step(3))
 

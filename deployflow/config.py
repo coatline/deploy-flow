@@ -79,8 +79,6 @@ def update_project(pid: str, cfg: dict[str, Any]) -> None:
     data = load_all_projects()
     if pid in data["projects"]:
         data["projects"][pid].update(cfg)
-        if cfg.get("project_path"):
-            data["projects"][pid]["name"] = Path(cfg["project_path"]).name
         save_all_projects(data)
 
 
