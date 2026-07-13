@@ -1,0 +1,9 @@
+{
+  "engine": "godot",
+  "project_path": "./my_game",
+  "build_path": "./builds/win64",
+  "itch_target": "user/game-name:windows",
+  "itch_url": "https://user.itch.io/game-name",
+  "steam_app_id": "123456",
+  "steam_url": "https://store.steampowered.com/app/123456"
+}
