@@ -10,7 +10,7 @@ import threading
 import time
 import webbrowser
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, scrolledtext
+from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 from typing import Any
 
@@ -89,7 +89,7 @@ class DeployFlowApp:
         self._running = False
         self.entries: dict[str, tk.Entry | ttk.Combobox | tk.Text] = {}
         self._warn_visible = False
-        self.log_text: scrolledtext.ScrolledText | None = None
+        self.log_text: tk.Text | None = None
         self.status_var = tk.StringVar(value="Ready")
         self.timer_var = tk.StringVar(value="")
         self._timer_id: str | None = None
@@ -253,11 +253,23 @@ class DeployFlowApp:
         canvas = tk.Canvas(parent, bg=self.BG, highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
         scrollable = tk.Frame(canvas, bg=self.BG)
-        scrollable.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        def _update_scrollbar() -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            bbox = canvas.bbox("all")
+            if bbox:
+                _, _, _, ch = bbox
+                vh = canvas.winfo_height()
+                if ch > vh:
+                    scrollbar.pack(side="right", fill="y", pady=4)
+                else:
+                    scrollbar.pack_forget()
+
+        scrollable.bind("<Configure>", lambda _e: _update_scrollbar())
+        canvas.bind("<Configure>", lambda _e: _update_scrollbar())
         canvas.create_window((0, 0), window=scrollable, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True, padx=(4, 0), pady=4)
-        scrollbar.pack(side="right", fill="y", pady=4)
         def _on_mousewheel(event: tk.Event) -> None:
             canvas.yview_scroll(-1 * (event.delta // 120), "units")
         canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _on_mousewheel))
@@ -573,12 +585,27 @@ class DeployFlowApp:
             command=self._clear_log,
         ).pack(side="right", padx=(2, 0), ipadx=4, ipady=0)
 
-        self.log_text = scrolledtext.ScrolledText(
-            parent, bg=self.LOG_BG, fg="#00ff88",
+        log_frame = tk.Frame(parent, bg=self.LOG_BG)
+        log_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+
+        self.log_text = tk.Text(
+            log_frame, bg=self.LOG_BG, fg="#00ff88",
             insertbackground=self.FG, font=("Consolas", 9),
             relief="flat", state="disabled", wrap="word",
         )
-        self.log_text.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        log_scrollbar = tk.Scrollbar(log_frame, orient="vertical", bg=self.LOG_BG)
+
+        def _log_scroll_update(*args: str) -> None:
+            log_scrollbar.set(*args)
+            first, last = args
+            if float(first) > 0.0 or float(last) < 1.0:
+                log_scrollbar.pack(side="right", fill="y")
+            else:
+                log_scrollbar.pack_forget()
+
+        self.log_text.configure(yscrollcommand=_log_scroll_update)
+        self.log_text.pack(side="left", fill="both", expand=True)
+        log_scrollbar.configure(command=self.log_text.yview)
 
     # ── Settings view ─────────────────────────────────────────────────
 
