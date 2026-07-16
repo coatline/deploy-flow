@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -228,15 +228,32 @@ def zip_build_endpoint(pid: str):
     except Exception as e:
         raise HTTPException(500, str(e))
 
-# --- Serve React frontend ---
-frontend_dist = PROJECT_ROOT / "frontend" / "dist"
-if frontend_dist.is_dir():
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
-
-# ===================== HEALTH =====================
+# ===================== HEALTH & FRONTEND (must be last) =====================
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+index_html = frontend_dist / "index.html"
+
+if frontend_dist.is_dir():
+    from starlette.staticfiles import StaticFiles
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend_assets")
+    favicon_path = frontend_dist / "favicon.svg"
+    if favicon_path.exists():
+        @app.get("/favicon.svg")
+        async def favicon():
+            return FileResponse(str(favicon_path))
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api/"):
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        fp = frontend_dist / full_path
+        if fp.is_file():
+            return FileResponse(str(fp))
+        return FileResponse(str(index_html))
 
 def main():
     uvicorn.run(app, host="127.0.0.1", port=8700)
