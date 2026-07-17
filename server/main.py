@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -26,9 +27,51 @@ from deployflow.engine import build_godot, build_unity, zip_build
 from deployflow.uploaders import push_itch, push_steam
 from deployflow.recent import load_recent_ids, add_recent, remove_recent
 
+# --- Frontend build guard ---
+def ensure_frontend_built():
+    frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+    if (frontend_dist / "index.html").exists():
+        return
+    frontend_dir = PROJECT_ROOT / "frontend"
+    if not (frontend_dir / "package.json").exists():
+        return
+    print("[startup] frontend/dist missing - building frontend...")
+    try:
+        if not (frontend_dir / "node_modules").exists():
+            subprocess.run(["npm", "install"], cwd=str(frontend_dir), check=True)
+        subprocess.run(["npm", "run", "build"], cwd=str(frontend_dir), check=True)
+        print("[startup] frontend built successfully")
+    except Exception as e:
+        print(f"[startup] WARNING: failed to build frontend: {e}")
+
+def mount_frontend(app: FastAPI):
+    from starlette.staticfiles import StaticFiles
+    frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+    index_html = frontend_dist / "index.html"
+    if not frontend_dist.is_dir() or not index_html.exists():
+        return
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend_assets")
+    favicon_path = frontend_dist / "favicon.svg"
+    if favicon_path.exists():
+        @app.get("/favicon.svg")
+        async def favicon():
+            return FileResponse(str(favicon_path))
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        from fastapi.responses import JSONResponse
+        if full_path.startswith("api/") or full_path.startswith("favicon"):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        fp = frontend_dist / full_path
+        if fp.is_file():
+            return FileResponse(str(fp))
+        return FileResponse(str(index_html))
+
 # --- Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    ensure_frontend_built()
+    mount_frontend(app)
     yield
 
 app = FastAPI(title="Deploy Flow API", version="1.0.0", lifespan=lifespan)
@@ -228,32 +271,10 @@ def zip_build_endpoint(pid: str):
     except Exception as e:
         raise HTTPException(500, str(e))
 
-# ===================== HEALTH & FRONTEND (must be last) =====================
+# ===================== HEALTH =====================
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-frontend_dist = PROJECT_ROOT / "frontend" / "dist"
-index_html = frontend_dist / "index.html"
-
-if frontend_dist.is_dir():
-    from starlette.staticfiles import StaticFiles
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend_assets")
-    favicon_path = frontend_dist / "favicon.svg"
-    if favicon_path.exists():
-        @app.get("/favicon.svg")
-        async def favicon():
-            return FileResponse(str(favicon_path))
-
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        if full_path.startswith("api/"):
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=404, content={"detail": "Not Found"})
-        fp = frontend_dist / full_path
-        if fp.is_file():
-            return FileResponse(str(fp))
-        return FileResponse(str(index_html))
 
 def main():
     uvicorn.run(app, host="127.0.0.1", port=8700)
