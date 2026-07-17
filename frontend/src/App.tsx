@@ -11,7 +11,7 @@ const nav = [
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen bg-surface-900 text-surface-100">
+      <div className="flex h-screen bg-surface-950 text-surface-100">
         <nav className="w-48 bg-surface-800 border-r border-surface-700 p-4 space-y-1 shrink-0">
           <h1 className="text-lg font-bold mb-4 text-teal-400">Deploy Flow</h1>
           {nav.map(n => (
