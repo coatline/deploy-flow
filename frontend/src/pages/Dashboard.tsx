@@ -24,7 +24,7 @@ export default function Dashboard() {
       <div className="flex gap-2">
         <input value={pathInput} onChange={e => setPathInput(e.target.value)}
           placeholder="Path to game project..."
-          className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm" />
+          className="flex-1 bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm" />
         <button onClick={addProject} className="bg-teal-700 px-4 py-1.5 rounded text-sm hover:bg-teal-600">
           Add Project
         </button>
@@ -33,16 +33,16 @@ export default function Dashboard() {
       <div className="grid gap-3">
         {projects.map(p => (
           <Link key={p.id} to={`/projects/${p.id}`}
-            className="bg-gray-800 rounded p-4 flex items-center justify-between hover:bg-gray-750 transition-colors">
+            className="bg-surface-800 rounded p-4 flex items-center justify-between hover:bg-gray-750 transition-colors">
             <div>
               <span className="font-semibold text-lg">{p.name}</span>
-              <span className="text-gray-400 text-sm ml-3">{p.engine || '?'} | {p.platform || '?'}</span>
+              <span className="text-surface-400 text-sm ml-3">{p.engine || '?'} | {p.platform || '?'}</span>
               {p.last_build_time && (
                 <span className={`ml-3 text-xs ${p.last_build_success ? 'text-green-400' : 'text-red-400'}`}>
                   {p.last_build_success ? 'Last build OK' : 'Last build failed'}
                 </span>
               )}
-              <div className="text-gray-500 text-xs mt-1">{p.project_path}</div>
+              <div className="text-surface-500 text-xs mt-1">{p.project_path}</div>
             </div>
             <div className="flex gap-2">
               {p.itch_target && <span className="bg-purple-700 px-2 py-0.5 rounded text-xs">Itch</span>}
@@ -51,7 +51,7 @@ export default function Dashboard() {
           </Link>
         ))}
         {projects.length === 0 && (
-          <p className="text-gray-400">No projects yet. Add a game project path above.</p>
+          <p className="text-surface-400">No projects yet. Add a game project path above.</p>
         )}
       </div>
     </div>

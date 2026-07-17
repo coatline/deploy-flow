@@ -11,12 +11,12 @@ const nav = [
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen bg-gray-900 text-gray-100">
-        <nav className="w-48 bg-gray-800 border-r border-gray-700 p-4 space-y-1 shrink-0">
+      <div className="flex h-screen bg-surface-900 text-surface-100">
+        <nav className="w-48 bg-surface-800 border-r border-surface-700 p-4 space-y-1 shrink-0">
           <h1 className="text-lg font-bold mb-4 text-teal-400">Deploy Flow</h1>
           {nav.map(n => (
             <NavLink key={n.to} to={n.to} className={({ isActive }) =>
-              `block px-3 py-2 rounded text-sm ${isActive ? 'bg-teal-700 text-white' : 'text-gray-300 hover:bg-gray-700'}`
+              `block px-3 py-2 rounded text-sm ${isActive ? 'bg-teal-700 text-white' : 'text-surface-300 hover:bg-surface-700'}`
             }>
               {n.label}
             </NavLink>

@@ -24,7 +24,7 @@ export default function ProjectDetail() {
 
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight })
 
-  if (!id || !proj) return <p className="text-gray-400">Loading...</p>
+  if (!id || !proj) return <p className="text-surface-400">Loading...</p>
 
   async function handleDetect() {
     const d = await api.projects.detect(id)
@@ -121,7 +121,7 @@ export default function ProjectDetail() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">{proj.name}</h2>
         <div className="flex gap-2">
-          <button onClick={handleDetect} className="bg-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-600">
+          <button onClick={handleDetect} className="bg-surface-700 px-3 py-1 rounded text-sm hover:bg-surface-600">
             Detect
           </button>
           <button onClick={handleDelete} className="bg-red-800 px-3 py-1 rounded text-sm hover:bg-red-700">
@@ -131,7 +131,7 @@ export default function ProjectDetail() {
       </div>
 
       {detected && (
-        <div className="bg-gray-800 rounded p-3 text-sm flex gap-4">
+        <div className="bg-surface-800 rounded p-3 text-sm flex gap-4">
           <span>Engine: <strong className="text-teal-400">{detected.engine || '-'}</strong></span>
           <span>Version: <strong>{detected.version || '-'}</strong></span>
           {detected.presets.length > 0 && (
@@ -140,45 +140,45 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      <div className="bg-gray-800 rounded p-4">
+      <div className="bg-surface-800 rounded p-4">
         <h3 className="font-semibold mb-3">Project Config</h3>
         <div className="grid grid-cols-2 gap-3">
           {configFields.map(f => (
             <div key={f.key}>
-              <label className="text-xs text-gray-400 block">{f.label}</label>
+              <label className="text-xs text-surface-400 block">{f.label}</label>
               <input value={(proj as any)[f.key] || ''} onChange={e => saveField(f.key, e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm" />
+                className="w-full bg-surface-700 border border-surface-600 rounded px-2 py-1 text-sm" />
             </div>
           ))}
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded p-4">
+      <div className="bg-surface-800 rounded p-4">
         <h3 className="font-semibold mb-3 text-purple-400">itch.io</h3>
         <div className="grid grid-cols-2 gap-3 mb-3">
           {itchFields.map(f => (
             <div key={f.key}>
-              <label className="text-xs text-gray-400 block">{f.label}</label>
+              <label className="text-xs text-surface-400 block">{f.label}</label>
               <input value={(proj as any)[f.key] || ''} onChange={e => saveField(f.key, e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm" />
+                className="w-full bg-surface-700 border border-surface-600 rounded px-2 py-1 text-sm" />
             </div>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-400">Demo Build</label>
+          <label className="text-xs text-surface-400">Demo Build</label>
           <input type="checkbox" checked={proj.demo_build} onChange={e => saveField('demo_build', e.target.checked)}
             className="accent-purple-500" />
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded p-4">
+      <div className="bg-surface-800 rounded p-4">
         <h3 className="font-semibold mb-3 text-teal-400">Steam</h3>
         <div className="grid grid-cols-2 gap-3">
           {steamFields.map(f => (
             <div key={f.key}>
-              <label className="text-xs text-gray-400 block">{f.label}</label>
+              <label className="text-xs text-surface-400 block">{f.label}</label>
               <input value={(proj as any)[f.key] || ''} onChange={e => saveField(f.key, e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm" />
+                className="w-full bg-surface-700 border border-surface-600 rounded px-2 py-1 text-sm" />
             </div>
           ))}
         </div>
@@ -197,13 +197,13 @@ export default function ProjectDetail() {
           className="bg-teal-700 px-4 py-2 rounded text-sm hover:bg-teal-600 disabled:opacity-50">
           Upload Steam {steamStatus === 'running' ? '...' : ''}
         </button>
-        <button onClick={handleZip} className="bg-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-600">
+        <button onClick={handleZip} className="bg-surface-700 px-4 py-2 rounded text-sm hover:bg-surface-600">
           Create Zip
         </button>
       </div>
 
       {buildStatus !== 'idle' && (
-        <div className="bg-gray-800 rounded p-4">
+        <div className="bg-surface-800 rounded p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className={`w-2 h-2 rounded-full ${buildStatus === 'running' ? 'bg-yellow-400 animate-pulse' : buildStatus === 'completed' ? 'bg-green-400' : 'bg-red-400'}`} />
             <span className="font-semibold text-sm">Build: {buildStatus}</span>
@@ -215,7 +215,7 @@ export default function ProjectDetail() {
       )}
 
       {itchStatus !== 'idle' && (
-        <div className="bg-gray-800 rounded p-4">
+        <div className="bg-surface-800 rounded p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className={`w-2 h-2 rounded-full ${itchStatus === 'running' ? 'bg-yellow-400 animate-pulse' : itchStatus === 'completed' ? 'bg-green-400' : 'bg-red-400'}`} />
             <span className="font-semibold text-sm">Itch.io: {itchStatus}</span>
@@ -227,7 +227,7 @@ export default function ProjectDetail() {
       )}
 
       {steamStatus !== 'idle' && (
-        <div className="bg-gray-800 rounded p-4">
+        <div className="bg-surface-800 rounded p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className={`w-2 h-2 rounded-full ${steamStatus === 'running' ? 'bg-yellow-400 animate-pulse' : steamStatus === 'completed' ? 'bg-green-400' : 'bg-red-400'}`} />
             <span className="font-semibold text-sm">Steam: {steamStatus}</span>
