@@ -5,6 +5,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from deployflow import shared_db
+
 CONFIG_FILE = "deployflow.json"
 PROJECTS_FILE = "projects.json"
 
@@ -48,9 +50,18 @@ def load_all_projects() -> dict[str, Any]:
         return {"projects": {}, "order": []}
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
     except (json.JSONDecodeError, OSError):
         return {"projects": {}, "order": []}
+    # Ensure every project has a shared-DB project_id (standalone-safe).
+    needs_save = False
+    for pid, proj in data.get("projects", {}).items():
+        if not proj.get("project_id"):
+            proj["project_id"] = shared_db.new_project_id()
+            needs_save = True
+    if needs_save:
+        save_all_projects(data)
+    return data
 
 
 def save_all_projects(data: dict[str, Any]) -> None:
@@ -69,6 +80,16 @@ def create_project(project_path: str) -> str:
     engine = detect_engine(Path(project_path))
     if engine:
         proj["engine"] = engine
+    # Link to the unified shared project record.
+    project_id = shared_db.new_project_id()
+    proj["project_id"] = project_id
+    shared_db.ensure_project(
+        project_id,
+        name=proj["name"],
+        description="",
+        project_path=proj["project_path"],
+        engine=proj["engine"],
+    )
     data["projects"][pid] = proj
     data["order"].append(pid)
     save_all_projects(data)
@@ -77,16 +98,30 @@ def create_project(project_path: str) -> str:
 
 def update_project(pid: str, cfg: dict[str, Any]) -> None:
     data = load_all_projects()
-    if pid in data["projects"]:
-        data["projects"][pid].update(cfg)
-        save_all_projects(data)
+    if pid not in data["projects"]:
+        return
+    data["projects"][pid].update(cfg)
+    save_all_projects(data)
+    project = data["projects"][pid]
+    project_id = project.get("project_id")
+    if project_id and ("name" in cfg or "project_path" in cfg or "engine" in cfg
+                       or "description" in cfg):
+        shared_db.update_project_meta(
+            project_id,
+            name=cfg.get("name"),
+            description=cfg.get("description"),
+            project_path=cfg.get("project_path"),
+            engine=cfg.get("engine"),
+        )
 
 
 def delete_project(pid: str) -> None:
     data = load_all_projects()
-    data["projects"].pop(pid, None)
+    project = data["projects"].pop(pid, None)
     data["order"] = [p for p in data["order"] if p != pid]
     save_all_projects(data)
+    if project:
+        shared_db.delete_project(project.get("project_id"))
 
 
 def get_project(pid: str) -> dict[str, Any]:
